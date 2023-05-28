@@ -1,0 +1,15 @@
+LastPass.app
+Rectangle.app
+OneDrive.app
+WebCatalog.app
+Microsoft Word.app
+Safari.app
+Microsoft Excel.app
+GitHub Desktop.app
+Firefox.app
+Flycut.app
+Microsoft PowerPoint.app
+Evernote.app
+Skitch.app
+Contexts.app
+LockDown Browser.app

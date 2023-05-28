@@ -2,94 +2,82 @@ import os
 import subprocess
 import time
 
-# Function to create the 'App List'
-def create_app_list():
-    app_list = os.listdir('/Applications')
-    with open('App List.txt', 'w') as file:
-        file.write('\n'.join(app_list))
-    print("App List created successfully!")
+# Function to install Python
+def install_python():
+    print("Installing Python...")
+    subprocess.call(['/usr/sbin/softwareupdate', '-i', 'python'])
+    print("Python installation complete.")
 
 # Function to install Homebrew
 def install_homebrew():
-    subprocess.run(['/bin/bash', '-c', '$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)'])
-    print("Homebrew installation complete!")
+    print("Installing Homebrew...")
+    subprocess.call(['/usr/bin/ruby', '-e', '$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)'])
+    print("Homebrew installation complete.")
 
-# Function to install the latest version of Python using Homebrew
-def install_python():
-    subprocess.run(['brew', 'install', 'python'])
-    print("Python installation complete!")
+# Function to get a list of applications in the Applications folder
+def get_application_list():
+    app_folder = '/Applications'
+    app_list = [filename for filename in os.listdir(app_folder) if filename.endswith('.app')]
+    return app_list
 
-# Function to check if an application is installed
-def is_app_installed(app_name):
-    return os.path.exists('/Applications/' + app_name)
+# Function to install applications via Homebrew
+def install_applications(app_list):
+    not_yet = []
+    total_apps = len(app_list)
+    completed_apps = 0
 
-# Function to find the latest version of an application using Homebrew
-def find_latest_version(app_name):
-    result = subprocess.run(['brew', 'search', app_name], capture_output=True, text=True)
-    output = result.stdout.strip().split('\n')
-    if output:
-        return output[-1].split(' ')[0]
-    else:
-        return None
+    print("Installing Applications:")
 
-# Function to install an application using Homebrew
-def install_application(app_name):
-    subprocess.run(['brew', 'install', app_name])
+    for app_name in app_list:
+        completed_apps += 1
+        print("{}/{}: {}".format(completed_apps, total_apps, app_name))
 
-# Function to display progress
-def display_progress(start_time, current_index, total_count):
-    elapsed_time = time.time() - start_time
-    average_time = elapsed_time / current_index
-    remaining_time = (total_count - current_index) * average_time
-    print(f"Progress: {current_index}/{total_count} | Elapsed Time: {elapsed_time:.2f}s | Remaining Time: {remaining_time:.2f}s")
+        command = 'brew info --json=v2 {}'.format(app_name)
+        result = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, error = result.communicate()
+        output = output.strip().decode('utf-8')
+
+        if 'No available formula or cask with the name' in output:
+            not_yet.append(app_name)
+        else:
+            subprocess.call(['brew', 'install', app_name])
+            time.sleep(0.1)
+
+    return not_yet
 
 # Main script
 def main():
-    print("Welcome to RockNRollMacInstaller!")
-    print("Please select an option:")
-    print("1. Create App List")
-    print("2. Install Applications")
+    print("Welcome to the Application Manager!")
+    print("Choose an option:")
+    print("1. Pre-Wipe: Create Application List")
+    print("2. Post-Wipe: Restore Applications")
 
-    option = input("Enter your choice (1 or 2): ")
+    choice = int(input("Enter your choice (1 or 2): "))
 
-    if option == '1':
-        create_app_list()
-    elif option == '2':
-        # Part 1: Install Homebrew
-        print("Installing Homebrew...")
+    if choice == 1:
+        # Pre-Wipe: Create Application List
+        app_list = get_application_list()
+        with open('App List.txt', 'w') as file:
+            file.write('\n'.join(app_list))
+        print("App List created.")
+
+    elif choice == 2:
+        # Post-Wipe: Restore Applications
+        install_python()
         install_homebrew()
 
-        # Part 2: Install Python
-        print("Installing Python...")
-        install_python()
+        app_list_file = input("Enter the path to the App List file: ")
 
-        # Part 3: Check and install missing applications
-        with open('App List.txt', 'r') as file:
-            app_list = file.read().split('\n')
+        with open(app_list_file, 'r') as file:
+            app_list = file.read().splitlines()
 
-        not_yet = []
-        print("Checking for missing applications...")
-        for app in app_list:
-            if not is_app_installed(app):
-                not_yet.append(app)
-        total_count = len(not_yet)
+        not_yet = install_applications(app_list)
 
-        if total_count > 0:
-            print("Installing missing applications:")
-            start_time = time.time()
-            for i, app in enumerate(not_yet, start=1):
-                version = find_latest_version(app)
-                if version:
-                    print(f"Installing {app} ({version})...")
-                    install_application(app)
-                else:
-                    print(f"Unable to find the latest version of {app}. Skipping installation.")
-                display_progress(start_time, i, total_count)
-            print("Installation of missing applications complete.")
-        else:
-            print("No missing applications found.")
+        print("Applications not yet installed:")
+        print('\n'.join(not_yet))
+
     else:
-        print("Invalid option. Please try again.")
+        print("Invalid choice. Please try again.")
 
 if __name__ == '__main__':
     main()
